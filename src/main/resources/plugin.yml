@@ -1,0 +1,19 @@
+name: SimpleHome
+version: '1.0-SNAPSHOT'
+main: com.jellypudding.simpleHome.SimpleHome
+api-version: '1.21'
+description: "Simple home teleportation plugin"
+author: AlphaAlex115
+commands:
+  sethome:
+    description: "Set your home location"
+    permission: simplehome.use
+    permission-message: "You don't have permission to set a home."
+  home:
+    description: "Teleport to your home location"
+    permission: simplehome.use
+    permission-message: "You don't have permission to teleport home."
+permissions:
+  simplehome.use:
+    description: Allows using home commands
+    default: true

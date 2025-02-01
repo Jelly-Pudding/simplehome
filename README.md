@@ -1,5 +1,5 @@
 # SimpleHome Plugin
-**SimpleHome** is a Minecraft Paper 1.21.3 plugin that allows players to set and teleport to their home location using simple commands.
+**SimpleHome** is a Minecraft Paper 1.21.4 plugin that allows players to set and teleport to their home location using simple commands.
 
 ## Installation
 1. Download the latest release [here](https://github.com/Jelly-Pudding/simplehome/releases/latest).

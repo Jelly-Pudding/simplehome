@@ -1,19 +1,31 @@
 name: SimpleHome
-version: '1.0.1'
+version: '1.0.2'
 main: com.jellypudding.simpleHome.SimpleHome
 api-version: '1.21'
-description: "Simple home teleportation plugin"
+description: "Simple home teleportation plugin with multiple homes support."
 author: AlphaAlex115
 commands:
   sethome:
-    description: "Set your home location"
+    description: "Set a named home location (or default 'home')."
+    usage: "/sethome [name]"
     permission: simplehome.use
     permission-message: "You don't have permission to set a home."
   home:
-    description: "Teleport to your home location"
+    description: "Teleport to a named home location (or default 'home')."
+    usage: "/home [name]"
     permission: simplehome.use
     permission-message: "You don't have permission to teleport home."
+  delhome:
+    description: "Delete a named home location."
+    usage: "/delhome <name>"
+    permission: simplehome.use
+    permission-message: "You don't have permission to delete a home."
+  homes:
+    description: "List your saved homes."
+    usage: "/homes"
+    permission: simplehome.use
+    permission-message: "You don't have permission to list homes."
 permissions:
   simplehome.use:
-    description: Allows using home commands
+    description: Allows using basic home commands (/sethome, /home, /delhome, /homes)
     default: true

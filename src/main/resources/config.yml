@@ -1,0 +1,5 @@
+# SimpleHome Configuration
+
+# The maximum number of homes a player can possibly acquire (through purchasing).
+# Must be 1 or greater.
+max-home-limit: 5 

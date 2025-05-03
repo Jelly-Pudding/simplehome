@@ -1,5 +1,5 @@
 # SimpleHome Plugin
-**SimpleHome** is a Minecraft Paper 1.21.4 plugin that allows players to set and teleport to their home location using simple commands.
+**SimpleHome** is a Minecraft Paper 1.21.4 plugin that allows players to set and teleport to multiple home locations using simple commands.
 
 ## Installation
 1. Download the latest release [here](https://github.com/Jelly-Pudding/simplehome/releases/latest).
@@ -7,32 +7,21 @@
 3. Restart your server.
 
 ## Features
-- Each player's home location is stored in a separate file for optimal performance
-- Home locations persist between server restarts
-- Includes world, coordinates, and player rotation
-- Simple commands for setting and teleporting to homes
+* Set multiple named home locations (default name is "home").
+* Teleport to your saved homes.
+* Delete specific homes.
+* List your currently set homes.
+* Stores home locations efficiently in an SQLite database.
+* Players start with a limit of 1 home.
 
 ## Commands
-- `/sethome`: Sets your home location to your current position
-- `/home`: Teleports you to your saved home location
+* `/sethome [name]` - Sets a home at your current location. Uses the name "home" if no name is provided.
+* `/home [name]` - Teleports you to the specified home. Uses the name "home" if no name is provided.
+* `/delhome <name>` - Deletes the home with the specified name.
+* `/homes` - Lists all the homes you have currently set.
 
 ## Permissions
-- `simplehome.use`: Allows use of both /home and /sethome commands
-
-## Data Storage
-Each player's home is stored in its own file at `plugins/SimpleHome/homes/{uuid}.yml` containing:
-```yaml
-world: world_name
-x: 0.0
-y: 64.0
-z: 0.0
-yaw: 0.0
-pitch: 0.0
-```
+* `simplehome.use` - Allows players to use `/sethome`, `/home`, `/delhome`, and `/homes`. (Default: true)
 
 ## Support Me
-Donations will help me with the development of this project.
-
-One-off donation: https://ko-fi.com/lolwhatyesme
-
-Patreon: https://www.patreon.com/lolwhatyesme
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/K3K715TC1R)

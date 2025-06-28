@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.jellypudding'
-version = '1.0.2'
+version = '1.0.3'
 
 repositories {
     mavenCentral()
@@ -18,7 +18,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.6-R0.1-SNAPSHOT")
 }
 
 def targetJavaVersion = 21

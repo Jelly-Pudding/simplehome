@@ -1,9 +1,10 @@
 name: SimpleHome
-version: '1.0.2'
+version: '1.0.3'
 main: com.jellypudding.simpleHome.SimpleHome
 api-version: '1.21'
 description: "Simple home teleportation plugin with multiple homes support."
 author: AlphaAlex115
+website: www.minecraftoffline.net
 commands:
   sethome:
     description: "Set a named home location (or default 'home')."

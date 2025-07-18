@@ -1,7 +1,12 @@
 package com.jellypudding.simpleHome;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.Style;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -183,9 +188,21 @@ public final class SimpleHome extends JavaPlugin implements Listener {
         if (homeNames.isEmpty()) {
             player.sendMessage(Component.text("You have no homes set. Use /sethome [name]").color(NamedTextColor.YELLOW));
         } else {
-            String homesList = String.join(", ", homeNames);
-            player.sendMessage(Component.text("Your homes (" + homeNames.size() + "/" + homeLimit + "): ").color(NamedTextColor.GOLD)
-                                    .append(Component.text(homesList).color(NamedTextColor.WHITE)));
+            TextComponent homesText = Component.text("Your homes (" + homeNames.size() + "/" + homeLimit + "): ").color(NamedTextColor.GOLD);
+            int size = homeNames.size();
+            for (int i = 0; i < size; i++) {
+                String name = homeNames.get(i);
+                TextComponent homesNameText = Component.text(name)
+                        .clickEvent(ClickEvent.suggestCommand("/home " + name))
+                        .hoverEvent(HoverEvent.showText(Component.text("Click to use command.")))
+                        .decoration(TextDecoration.UNDERLINED, true)
+                        .color(NamedTextColor.WHITE);
+                homesText = homesText.append(homesNameText);
+                if(i < size - 1) {
+                    homesText = homesText.append(Component.text(", ").color(NamedTextColor.WHITE));
+                }
+            }
+            player.sendMessage(homesText);
         }
     }
 

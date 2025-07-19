@@ -5,7 +5,6 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.Style;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
@@ -50,6 +49,8 @@ public final class SimpleHome extends JavaPlugin implements Listener {
         Objects.requireNonNull(getCommand("delhome")).setTabCompleter(this);
         Objects.requireNonNull(getCommand("homes")).setExecutor(this);
         Objects.requireNonNull(getCommand("homes")).setTabCompleter(this);
+        Objects.requireNonNull(getCommand("homeadmin")).setExecutor(this);
+        Objects.requireNonNull(getCommand("homeadmin")).setTabCompleter(this);
 
         getLogger().info("SimpleHome has been enabled!");
     }
@@ -75,12 +76,19 @@ public final class SimpleHome extends JavaPlugin implements Listener {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
+        String commandName = command.getName().toLowerCase();
+
+        // Handle admin commands that can be used by console.
+        if (commandName.equals("homeadmin")) {
+            handleHomeAdmin(sender, args);
+            return true;
+        }
+
+        // All other commands require a player.
         if (!(sender instanceof Player player)) {
             sender.sendMessage(Component.text("This command can only be used by players!").color(NamedTextColor.RED));
             return true;
         }
-
-        String commandName = command.getName().toLowerCase();
 
         switch (commandName) {
             case "sethome":
@@ -103,11 +111,41 @@ public final class SimpleHome extends JavaPlugin implements Listener {
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
+        String commandName = command.getName().toLowerCase();
+
+        // Handle homeadmin tab completion (works for console too).
+        if (commandName.equals("homeadmin")) {
+            if (!sender.hasPermission("simplehome.admin")) {
+                return Collections.emptyList();
+            }
+
+            if (args.length == 1) {
+                String currentArg = args[0].toLowerCase();
+                return List.of("increase", "decrease", "get", "visit").stream()
+                        .filter(action -> action.startsWith(currentArg))
+                        .collect(Collectors.toList());
+            } else if (args.length == 2 && (args[0].equalsIgnoreCase("increase") || args[0].equalsIgnoreCase("decrease") || args[0].equalsIgnoreCase("get") || args[0].equalsIgnoreCase("visit"))) {
+                String currentArg = args[1].toLowerCase();
+                return getServer().getOnlinePlayers().stream()
+                        .map(p -> p.getName())
+                        .filter(name -> name.toLowerCase().startsWith(currentArg))
+                        .collect(Collectors.toList());
+            } else if (args.length == 3 && args[0].equalsIgnoreCase("visit")) {
+                String currentArg = args[2].toLowerCase();
+                Player targetPlayer = getServer().getPlayer(args[1]);
+                if (targetPlayer != null) {
+                    List<String> homeNames = databaseManager.getHomes(targetPlayer.getUniqueId());
+                    return homeNames.stream()
+                            .filter(name -> name.toLowerCase().startsWith(currentArg))
+                            .collect(Collectors.toList());
+                }
+            }
+        }
+
+        // All other commands require a player.
         if (!(sender instanceof Player player)) {
             return Collections.emptyList();
         }
-
-        String commandName = command.getName().toLowerCase();
 
         if (commandName.equals("home") || commandName.equals("delhome")) {
             if (args.length == 1) {
@@ -203,6 +241,137 @@ public final class SimpleHome extends JavaPlugin implements Listener {
                 }
             }
             player.sendMessage(homesText);
+        }
+    }
+
+    private void handleHomeAdmin(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("simplehome.admin")) {
+            sender.sendMessage(Component.text("You don't have permission to use this command.").color(NamedTextColor.RED));
+            return;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(Component.text("Usage: /homeadmin <increase|decrease|get|visit> <player> [home_name]").color(NamedTextColor.RED));
+            return;
+        }
+
+        String action = args[0].toLowerCase();
+        String playerName = args[1];
+        Player targetPlayer = getServer().getPlayer(playerName);
+
+        if (targetPlayer == null) {
+            sender.sendMessage(Component.text("Player '" + playerName + "' not found or not online.").color(NamedTextColor.RED));
+            return;
+        }
+
+        UUID targetUUID = targetPlayer.getUniqueId();
+        int currentLimit = databaseManager.getHomeLimit(targetUUID);
+
+        switch (action) {
+            case "increase":
+                if (currentLimit >= maxHomeLimit) {
+                    sender.sendMessage(Component.text(playerName + " is already at the maximum home limit (" + maxHomeLimit + ").").color(NamedTextColor.RED));
+                    return;
+                }
+
+                if (databaseManager.setHomeLimit(targetUUID, currentLimit + 1)) {
+                    sender.sendMessage(Component.text("Increased " + playerName + "'s home limit from " + currentLimit + " to " + (currentLimit + 1) + ".").color(NamedTextColor.GREEN));
+                    targetPlayer.sendMessage(Component.text("Your home limit has been increased to " + (currentLimit + 1) + ".").color(NamedTextColor.GREEN));
+                } else {
+                    sender.sendMessage(Component.text("Failed to increase " + playerName + "'s home limit.").color(NamedTextColor.RED));
+                }
+                break;
+
+            case "decrease":
+                if (currentLimit <= 1) {
+                    sender.sendMessage(Component.text(playerName + " is already at the minimum home limit (1).").color(NamedTextColor.RED));
+                    return;
+                }
+
+                int currentHomes = databaseManager.getHomeCount(targetUUID);
+                int newLimit = currentLimit - 1;
+
+                // Auto-delete excess homes if necessary.
+                if (currentHomes > newLimit) {
+                    List<String> homeNames = databaseManager.getHomes(targetUUID);
+                    int homesToDelete = currentHomes - newLimit;
+
+                    for (int i = homeNames.size() - 1; i >= homeNames.size() - homesToDelete; i--) {
+                        String homeToDelete = homeNames.get(i);
+                        if (databaseManager.deleteHome(targetUUID, homeToDelete)) {
+                            sender.sendMessage(Component.text("Auto-deleted home '" + homeToDelete + "' from " + playerName + ".").color(NamedTextColor.YELLOW));
+                            targetPlayer.sendMessage(Component.text("Your home '" + homeToDelete + "' was deleted due to a limit decrease.").color(NamedTextColor.YELLOW));
+                        }
+                    }
+                }
+
+                if (databaseManager.setHomeLimit(targetUUID, newLimit)) {
+                    sender.sendMessage(Component.text("Decreased " + playerName + "'s home limit from " + currentLimit + " to " + newLimit + ".").color(NamedTextColor.GREEN));
+                    targetPlayer.sendMessage(Component.text("Your home limit has been decreased to " + newLimit + ".").color(NamedTextColor.YELLOW));
+                } else {
+                    sender.sendMessage(Component.text("Failed to decrease " + playerName + "'s home limit.").color(NamedTextColor.RED));
+                }
+                break;
+
+            case "get":
+                int homeCount = databaseManager.getHomeCount(targetUUID);
+                List<String> homeNames = databaseManager.getHomes(targetUUID);
+
+                sender.sendMessage(Component.text(playerName + "'s home info:").color(NamedTextColor.GOLD));
+                sender.sendMessage(Component.text("  Current homes: " + homeCount + " / " + currentLimit).color(NamedTextColor.YELLOW));
+
+                if (homeNames.isEmpty()) {
+                    sender.sendMessage(Component.text("  No homes set.").color(NamedTextColor.GRAY));
+                } else {
+                    TextComponent homesText = Component.text("  Home names: ").color(NamedTextColor.AQUA);
+                    int size = homeNames.size();
+                    for (int i = 0; i < size; i++) {
+                        String name = homeNames.get(i);
+                        TextComponent homeNameComponent = Component.text(name)
+                                .clickEvent(ClickEvent.suggestCommand("/homeadmin visit " + playerName + " " + name))
+                                .hoverEvent(HoverEvent.showText(Component.text("Click to teleport to this home")))
+                                .decoration(TextDecoration.UNDERLINED, true)
+                                .color(NamedTextColor.WHITE);
+                        homesText = homesText.append(homeNameComponent);
+                        if (i < size - 1) {
+                            homesText = homesText.append(Component.text(", ").color(NamedTextColor.WHITE));
+                        }
+                    }
+                    sender.sendMessage(homesText);
+                }
+                break;
+
+            case "visit":
+                if (args.length < 3) {
+                    sender.sendMessage(Component.text("Usage: /homeadmin visit <player> <home_name>").color(NamedTextColor.RED));
+                    return;
+                }
+
+                if (!(sender instanceof Player adminPlayer)) {
+                    sender.sendMessage(Component.text("This command can only be used by players!").color(NamedTextColor.RED));
+                    return;
+                }
+
+                String homeName = args[2];
+                Location homeLocation = databaseManager.getHome(targetUUID, homeName);
+
+                if (homeLocation == null) {
+                    sender.sendMessage(Component.text("Home '" + homeName + "' not found for player '" + playerName + "' or its world is not loaded.").color(NamedTextColor.RED));
+                    return;
+                }
+
+                adminPlayer.teleportAsync(homeLocation).thenAccept(success -> {
+                    if (success) {
+                        adminPlayer.sendMessage(Component.text("Teleported to " + playerName + "'s home '" + homeName + "'.").color(NamedTextColor.GREEN));
+                    } else {
+                        adminPlayer.sendMessage(Component.text("Teleportation failed.").color(NamedTextColor.RED));
+                    }
+                });
+                break;
+
+            default:
+                sender.sendMessage(Component.text("Invalid action. Use 'increase', 'decrease', 'get', or 'visit'.").color(NamedTextColor.RED));
+                break;
         }
     }
 

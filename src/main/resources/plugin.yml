@@ -1,5 +1,5 @@
 name: SimpleHome
-version: '1.0.4'
+version: '1.0.5'
 main: com.jellypudding.simpleHome.SimpleHome
 api-version: '1.21'
 description: "Simple home teleportation plugin with multiple homes support."
@@ -26,7 +26,15 @@ commands:
     usage: "/homes"
     permission: simplehome.use
     permission-message: "You don't have permission to list homes."
+  homeadmin:
+    description: "Admin command to manage player home limits and teleport to player homes."
+    usage: "/homeadmin <increase|decrease|get|visit> <player> [home_name]"
+    permission: simplehome.admin
+    permission-message: "You don't have permission to use admin commands."
 permissions:
   simplehome.use:
     description: Allows using basic home commands (/sethome, /home, /delhome, /homes)
     default: true
+  simplehome.admin:
+    description: Allows using admin commands to manage player home limits and visit player homes
+    default: op

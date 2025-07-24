@@ -38,7 +38,7 @@
 1. Download the latest `SimpleHome.jar` and place it in a `libs` directory - and then add this to your `build.gradle` file:
     ```gradle
     dependencies {
-        compileOnly files('libs/SimpleHome-1.0.4.jar')
+        compileOnly files('libs/SimpleHome-1.0.6.jar')
     }
     ```
 

@@ -26,7 +26,7 @@ public final class SimpleHome extends JavaPlugin implements Listener {
 
     private DatabaseManager databaseManager;
     private final String defaultHomeName = "home";
-    private int maxHomeLimit = 5;
+    private int maxHomeLimit = 10;
 
     @Override
     public void onEnable() {
@@ -65,10 +65,10 @@ public final class SimpleHome extends JavaPlugin implements Listener {
 
     private void loadConfigValues() {
         FileConfiguration config = getConfig();
-        int configuredLimit = config.getInt("max-home-limit", 5);
+        int configuredLimit = config.getInt("max-home-limit", 10);
         if (configuredLimit < 1) {
-            getLogger().warning("Invalid max-home-limit in config.yml (must be >= 1). Using default value: 5");
-            this.maxHomeLimit = 5;
+            getLogger().warning("Invalid max-home-limit in config.yml (must be >= 1). Using default value: 10");
+            this.maxHomeLimit = 10;
         } else {
             this.maxHomeLimit = configuredLimit;
         }

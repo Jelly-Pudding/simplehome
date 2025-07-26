@@ -2,4 +2,4 @@
 
 # The maximum number of homes a player can possibly acquire.
 # Must be 1 or greater.
-max-home-limit: 5 
+max-home-limit: 10

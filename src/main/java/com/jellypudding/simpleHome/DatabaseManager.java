@@ -65,8 +65,66 @@ public class DatabaseManager {
             plugin.getLogger().info("Database table 'player_homes' initialized.");
             stmt.execute(sqlLimits);
             plugin.getLogger().info("Database table 'player_home_limits' initialized.");
+
+            migrateHomeLimitsSchema(limit);
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Could not create database tables: " + e.getMessage(), e);
+        }
+    }
+
+    private void migrateHomeLimitsSchema(int newLimit) {
+        if (connection == null) return;
+
+        try {
+            String testSql = "INSERT OR IGNORE INTO player_home_limits (uuid, max_homes) VALUES (?, ?)";
+            String testUuid = "test-constraint-check-uuid";
+
+            try (PreparedStatement testStmt = connection.prepareStatement(testSql)) {
+                testStmt.setString(1, testUuid);
+                testStmt.setInt(2, newLimit);
+                testStmt.executeUpdate();
+
+                String checkSql = "SELECT max_homes FROM player_home_limits WHERE uuid = ?";
+                try (PreparedStatement checkStmt = connection.prepareStatement(checkSql)) {
+                    checkStmt.setString(1, testUuid);
+                    ResultSet rs = checkStmt.executeQuery();
+
+                    if (rs.next() && rs.getInt("max_homes") == newLimit) {
+                        String deleteSql = "DELETE FROM player_home_limits WHERE uuid = ?";
+                        try (PreparedStatement deleteStmt = connection.prepareStatement(deleteSql)) {
+                            deleteStmt.setString(1, testUuid);
+                            deleteStmt.executeUpdate();
+                        }
+                        plugin.getLogger().info("Database schema is compatible with max home limit: " + newLimit);
+                        return;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().info("Database constraint needs updating for new max home limit: " + newLimit);
+        }
+
+        try (Statement stmt = connection.createStatement()) {
+            plugin.getLogger().info("Migrating player_home_limits table for new max limit: " + newLimit);
+
+            String createTempSql = "CREATE TABLE player_home_limits_temp (" +
+                                 " uuid TEXT PRIMARY KEY NOT NULL," +
+                                 " max_homes INTEGER NOT NULL DEFAULT 1 CHECK(max_homes >= 1 AND max_homes <= " + newLimit + ")" +
+                                 ");";
+            stmt.execute(createTempSql);
+
+            String copySql = "INSERT INTO player_home_limits_temp (uuid, max_homes) " +
+                           "SELECT uuid, MIN(max_homes, " + newLimit + ") FROM player_home_limits";
+            stmt.execute(copySql);
+
+            stmt.execute("DROP TABLE player_home_limits");
+
+            stmt.execute("ALTER TABLE player_home_limits_temp RENAME TO player_home_limits");
+
+            plugin.getLogger().info("Successfully migrated player_home_limits table to support max limit: " + newLimit);
+
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to migrate database schema: " + e.getMessage(), e);
         }
     }
 

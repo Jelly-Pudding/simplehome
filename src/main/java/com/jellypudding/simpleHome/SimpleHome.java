@@ -27,6 +27,7 @@ public final class SimpleHome extends JavaPlugin implements Listener {
     private DatabaseManager databaseManager;
     private final String defaultHomeName = "home";
     private int maxHomeLimit = 10;
+    private boolean allowCrossDimensionTeleport = false;
 
     @Override
     public void onEnable() {
@@ -52,6 +53,10 @@ public final class SimpleHome extends JavaPlugin implements Listener {
         Objects.requireNonNull(getCommand("homeadmin")).setExecutor(this);
         Objects.requireNonNull(getCommand("homeadmin")).setTabCompleter(this);
 
+        // Initialise bStats.
+        int pluginId = 27541;
+        new Metrics(this, pluginId);
+
         getLogger().info("SimpleHome has been enabled!");
     }
 
@@ -72,6 +77,7 @@ public final class SimpleHome extends JavaPlugin implements Listener {
         } else {
             this.maxHomeLimit = configuredLimit;
         }
+        this.allowCrossDimensionTeleport = config.getBoolean("allow-cross-dimension-teleport", false);
     }
 
     @Override
@@ -159,8 +165,6 @@ public final class SimpleHome extends JavaPlugin implements Listener {
         return Collections.emptyList();
     }
 
-    // --- Command Handlers ---
-
     private void handleSetHome(Player player, String[] args) {
         String homeName = (args.length > 0) ? args[0] : defaultHomeName;
 
@@ -193,6 +197,11 @@ public final class SimpleHome extends JavaPlugin implements Listener {
 
         if (location == null) {
             player.sendMessage(Component.text("Home '" + homeName + "' not found or its world is not loaded.").color(NamedTextColor.RED));
+            return;
+        }
+
+        if (!allowCrossDimensionTeleport && !player.getWorld().equals(location.getWorld())) {
+            player.sendMessage(Component.text("You cannot teleport to this home as it is in a different dimension.").color(NamedTextColor.RED));
             return;
         }
 

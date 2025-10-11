@@ -1,5 +1,5 @@
 # SimpleHome Plugin
-**SimpleHome** is a Minecraft Paper 1.21.8 plugin that allows players to set and teleport to multiple home locations using simple commands.
+**SimpleHome** is a Minecraft Paper 1.21.10 plugin that allows players to set and teleport to multiple home locations using simple commands.
 
 ## Installation
 1. Download the latest release [here](https://github.com/Jelly-Pudding/simplehome/releases/latest).
@@ -13,6 +13,7 @@
 * List your currently set homes.
 * Stores home locations efficiently in an SQLite database.
 * Players start with a limit of 1 home.
+* Cross-dimension teleportation control.
 
 ## Commands
 
@@ -32,13 +33,17 @@
 * `simplehome.use` - Allows `Player Commands` (`/sethome`, `/home`, `/delhome`, and `/homes`) - (Default: true)
 * `simplehome.admin` - Allows `Admin Commands` (`/homeadmin increase`, `/homeadmin decrease`, `/homeadmin get`, `/homeadmin visit`) - (Default: op)
 
+## Configuration
+* `max-home-limit` - Maximum number of homes a player can possibly acquire (default: 10).
+* `allow-cross-dimension-teleport` - Allow players to teleport to homes across different dimensions (default: false).
+
 ## API for Developers
 
 ### Setup Dependencies
 1. Download the latest `SimpleHome.jar` and place it in a `libs` directory - and then add this to your `build.gradle` file:
     ```gradle
     dependencies {
-        compileOnly files('libs/SimpleHome-1.0.6.jar')
+        compileOnly files('libs/SimpleHome-1.0.7.jar')
     }
     ```
 

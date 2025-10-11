@@ -26,7 +26,7 @@ public class DatabaseManager {
         }
         this.databasePath = "jdbc:sqlite:" + new File(plugin.getDataFolder(), "homes.db").getAbsolutePath();
         connect();
-        initializeDatabase(this.maxHomeLimit);
+        initialisedatabase(this.maxHomeLimit);
     }
 
     private void connect() {
@@ -40,31 +40,31 @@ public class DatabaseManager {
         }
     }
 
-    private void initializeDatabase(int limit) {
+    private void initialisedatabase(int limit) {
         if (connection == null) return;
 
         String sqlHomes = "CREATE TABLE IF NOT EXISTS player_homes (" +
-                        " uuid TEXT NOT NULL," +
-                        " home_name TEXT NOT NULL COLLATE NOCASE," +
-                        " world TEXT NOT NULL," +
-                        " x REAL NOT NULL," +
-                        " y REAL NOT NULL," +
-                        " z REAL NOT NULL," +
-                        " yaw REAL NOT NULL," +
-                        " pitch REAL NOT NULL," +
-                        " PRIMARY KEY (uuid, home_name)" +
-                        ");";
+                          " uuid TEXT NOT NULL," +
+                          " home_name TEXT NOT NULL COLLATE NOCASE," +
+                          " world TEXT NOT NULL," +
+                          " x REAL NOT NULL," +
+                          " y REAL NOT NULL," +
+                          " z REAL NOT NULL," +
+                          " yaw REAL NOT NULL," +
+                          " pitch REAL NOT NULL," +
+                          " PRIMARY KEY (uuid, home_name)" +
+                          ");";
 
         String sqlLimits = "CREATE TABLE IF NOT EXISTS player_home_limits (" +
-                         " uuid TEXT PRIMARY KEY NOT NULL," +
-                         " max_homes INTEGER NOT NULL DEFAULT 1 CHECK(max_homes >= 1 AND max_homes <= " + limit + ")" +
-                         ");";
+                           " uuid TEXT PRIMARY KEY NOT NULL," +
+                           " max_homes INTEGER NOT NULL DEFAULT 1 CHECK(max_homes >= 1 AND max_homes <= " + limit + ")" +
+                           ");";
 
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(sqlHomes);
-            plugin.getLogger().info("Database table 'player_homes' initialized.");
+            plugin.getLogger().info("Database table 'player_homes' initialised.");
             stmt.execute(sqlLimits);
-            plugin.getLogger().info("Database table 'player_home_limits' initialized.");
+            plugin.getLogger().info("Database table 'player_home_limits' initialised.");
 
             migrateHomeLimitsSchema(limit);
         } catch (SQLException e) {
@@ -108,13 +108,13 @@ public class DatabaseManager {
             plugin.getLogger().info("Migrating player_home_limits table for new max limit: " + newLimit);
 
             String createTempSql = "CREATE TABLE player_home_limits_temp (" +
-                                 " uuid TEXT PRIMARY KEY NOT NULL," +
-                                 " max_homes INTEGER NOT NULL DEFAULT 1 CHECK(max_homes >= 1 AND max_homes <= " + newLimit + ")" +
-                                 ");";
+                                   " uuid TEXT PRIMARY KEY NOT NULL," +
+                                   " max_homes INTEGER NOT NULL DEFAULT 1 CHECK(max_homes >= 1 AND max_homes <= " + newLimit + ")" +
+                                   ");";
             stmt.execute(createTempSql);
 
             String copySql = "INSERT INTO player_home_limits_temp (uuid, max_homes) " +
-                           "SELECT uuid, MIN(max_homes, " + newLimit + ") FROM player_home_limits";
+                             "SELECT uuid, MIN(max_homes, " + newLimit + ") FROM player_home_limits";
             stmt.execute(copySql);
 
             stmt.execute("DROP TABLE player_home_limits");
@@ -138,8 +138,6 @@ public class DatabaseManager {
             plugin.getLogger().log(Level.SEVERE, "Could not close database connection: " + e.getMessage(), e);
         }
     }
-
-    // --- Home Limit Methods ---
 
     public int getHomeLimit(UUID uuid) {
         if (connection == null) return 1;
@@ -196,8 +194,6 @@ public class DatabaseManager {
         }
     }
 
-    // --- Home Data Methods ---
-
     public int getHomeCount(UUID uuid) {
         if (connection == null) return 0;
         String sql = "SELECT COUNT(*) FROM player_homes WHERE uuid = ?";
@@ -215,7 +211,6 @@ public class DatabaseManager {
 
     public boolean setHome(UUID uuid, String homeName, Location location) {
         if (connection == null) return false;
-        // Use REPLACE INTO to handle both inserts and updates based on composite primary key
         String sql = "REPLACE INTO player_homes (uuid, home_name, world, x, y, z, yaw, pitch) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -294,5 +289,4 @@ public class DatabaseManager {
             return false;
         }
     }
-
-} 
+}

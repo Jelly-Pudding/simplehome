@@ -1,5 +1,5 @@
 # SimpleHome Plugin
-**SimpleHome** is a Minecraft Paper 1.21.11 plugin that allows players to set and teleport to multiple home locations using simple commands.
+**SimpleHome** is a Minecraft Paper 26.1.2 plugin that allows players to set and teleport to multiple home locations using simple commands. Although it was custom built for [minecraftoffline.net](https://www.minecraftoffline.net), any server can use it.
 
 ## Installation
 1. Download the latest release [here](https://github.com/Jelly-Pudding/simplehome/releases/latest).

@@ -1,4 +1,4 @@
-package com.jellypudding.simpleHome;
+package com.jellypudding.simpleHome.database;
 
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -26,7 +26,7 @@ public class DatabaseManager {
         }
         this.databasePath = "jdbc:sqlite:" + new File(plugin.getDataFolder(), "homes.db").getAbsolutePath();
         connect();
-        initialisedatabase(this.maxHomeLimit);
+        initialiseDatabase(this.maxHomeLimit);
     }
 
     private void connect() {
@@ -40,7 +40,7 @@ public class DatabaseManager {
         }
     }
 
-    private void initialisedatabase(int limit) {
+    private void initialiseDatabase(int limit) {
         if (connection == null) return;
 
         String sqlHomes = "CREATE TABLE IF NOT EXISTS player_homes (" +
@@ -118,11 +118,9 @@ public class DatabaseManager {
             stmt.execute(copySql);
 
             stmt.execute("DROP TABLE player_home_limits");
-
             stmt.execute("ALTER TABLE player_home_limits_temp RENAME TO player_home_limits");
 
             plugin.getLogger().info("Successfully migrated player_home_limits table to support max limit: " + newLimit);
-
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to migrate database schema: " + e.getMessage(), e);
         }

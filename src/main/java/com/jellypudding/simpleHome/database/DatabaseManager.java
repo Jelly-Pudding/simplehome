@@ -7,8 +7,16 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.io.File;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 public class DatabaseManager {
@@ -18,6 +26,11 @@ public class DatabaseManager {
     private final String databasePath;
     private int maxHomeLimit;
 
+    private final ExecutorService dbExecutor;
+    private volatile Thread dbThread;
+
+    private final Map<UUID, List<String>> homeNameCache = new ConcurrentHashMap<>();
+
     public DatabaseManager(JavaPlugin plugin, int maxHomeLimit) {
         this.plugin = plugin;
         this.maxHomeLimit = maxHomeLimit;
@@ -25,8 +38,16 @@ public class DatabaseManager {
             plugin.getDataFolder().mkdirs();
         }
         this.databasePath = "jdbc:sqlite:" + new File(plugin.getDataFolder(), "homes.db").getAbsolutePath();
-        connect();
-        initialiseDatabase(this.maxHomeLimit);
+        this.dbExecutor = Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "SimpleHome-Database");
+            thread.setDaemon(true);
+            dbThread = thread;
+            return thread;
+        });
+        CompletableFuture.runAsync(() -> {
+            connect();
+            initialiseDatabase(this.maxHomeLimit);
+        }, dbExecutor).join();
     }
 
     private void connect() {
@@ -127,6 +148,14 @@ public class DatabaseManager {
     }
 
     public void closeConnection() {
+        dbExecutor.shutdown();
+        try {
+            if (!dbExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                plugin.getLogger().warning("Database tasks did not finish within 5 seconds; closing anyway.");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
@@ -137,7 +166,87 @@ public class DatabaseManager {
         }
     }
 
+    private <T> CompletableFuture<T> supplyAsync(Supplier<T> task) {
+        return CompletableFuture.supplyAsync(task, dbExecutor);
+    }
+
+    private <T> T runSync(Supplier<T> task) {
+        if (Thread.currentThread() == dbThread) {
+            return task.get();
+        }
+        return supplyAsync(task).join();
+    }
+
+    public void cachePlayer(UUID uuid) {
+        getHomesAsync(uuid).thenAccept(homes -> homeNameCache.put(uuid, List.copyOf(homes)));
+    }
+
+    public void uncachePlayer(UUID uuid) {
+        homeNameCache.remove(uuid);
+    }
+
+    public List<String> getCachedHomes(UUID uuid) {
+        List<String> homes = homeNameCache.get(uuid);
+        return homes != null ? homes : Collections.emptyList();
+    }
+
     public int getHomeLimit(UUID uuid) {
+        return runSync(() -> fetchHomeLimit(uuid));
+    }
+
+    public CompletableFuture<Integer> getHomeLimitAsync(UUID uuid) {
+        return supplyAsync(() -> fetchHomeLimit(uuid));
+    }
+
+    public boolean increaseHomeLimit(UUID uuid) {
+        return runSync(() -> applyHomeLimitIncrease(uuid));
+    }
+
+    public boolean setHomeLimit(UUID uuid, int limit) {
+        return runSync(() -> storeHomeLimit(uuid, limit));
+    }
+
+    public CompletableFuture<Boolean> setHomeLimitAsync(UUID uuid, int limit) {
+        return supplyAsync(() -> storeHomeLimit(uuid, limit));
+    }
+
+    public int getHomeCount(UUID uuid) {
+        return runSync(() -> fetchHomeCount(uuid));
+    }
+
+    public boolean setHome(UUID uuid, String homeName, Location location) {
+        return runSync(() -> storeHome(uuid, homeName, location));
+    }
+
+    public CompletableFuture<Boolean> setHomeAsync(UUID uuid, String homeName, Location location) {
+        return supplyAsync(() -> storeHome(uuid, homeName, location));
+    }
+
+    public Location getHome(UUID uuid, String homeName) {
+        return runSync(() -> fetchHome(uuid, homeName));
+    }
+
+    public CompletableFuture<Location> getHomeAsync(UUID uuid, String homeName) {
+        return supplyAsync(() -> fetchHome(uuid, homeName));
+    }
+
+    public List<String> getHomes(UUID uuid) {
+        return runSync(() -> fetchHomes(uuid));
+    }
+
+    public CompletableFuture<List<String>> getHomesAsync(UUID uuid) {
+        return supplyAsync(() -> fetchHomes(uuid));
+    }
+
+    public boolean deleteHome(UUID uuid, String homeName) {
+        return runSync(() -> removeHome(uuid, homeName));
+    }
+
+    public CompletableFuture<Boolean> deleteHomeAsync(UUID uuid, String homeName) {
+        return supplyAsync(() -> removeHome(uuid, homeName));
+    }
+
+    private int fetchHomeLimit(UUID uuid) {
         if (connection == null) return 1;
         String sql = "SELECT max_homes FROM player_home_limits WHERE uuid = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -152,9 +261,9 @@ public class DatabaseManager {
         return 1;
     }
 
-    public boolean increaseHomeLimit(UUID uuid) {
+    private boolean applyHomeLimitIncrease(UUID uuid) {
         if (connection == null) return false;
-        int currentLimit = getHomeLimit(uuid);
+        int currentLimit = fetchHomeLimit(uuid);
         if (currentLimit >= this.maxHomeLimit) {
             return false;
         }
@@ -173,7 +282,7 @@ public class DatabaseManager {
         }
     }
 
-    public boolean setHomeLimit(UUID uuid, int limit) {
+    private boolean storeHomeLimit(UUID uuid, int limit) {
         if (connection == null) return false;
         if (limit < 1 || limit > this.maxHomeLimit) {
             return false;
@@ -192,7 +301,7 @@ public class DatabaseManager {
         }
     }
 
-    public int getHomeCount(UUID uuid) {
+    private int fetchHomeCount(UUID uuid) {
         if (connection == null) return 0;
         String sql = "SELECT COUNT(*) FROM player_homes WHERE uuid = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -207,13 +316,14 @@ public class DatabaseManager {
         return 0;
     }
 
-    public boolean setHome(UUID uuid, String homeName, Location location) {
+    private boolean storeHome(UUID uuid, String homeName, Location location) {
         if (connection == null) return false;
         String sql = "REPLACE INTO player_homes (uuid, home_name, world, x, y, z, yaw, pitch) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
 
+        String storedName = homeName.toLowerCase();
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, uuid.toString());
-            pstmt.setString(2, homeName.toLowerCase());
+            pstmt.setString(2, storedName);
             pstmt.setString(3, location.getWorld().getName());
             pstmt.setDouble(4, location.getX());
             pstmt.setDouble(5, location.getY());
@@ -221,6 +331,13 @@ public class DatabaseManager {
             pstmt.setFloat(7, location.getYaw());
             pstmt.setFloat(8, location.getPitch());
             pstmt.executeUpdate();
+            homeNameCache.computeIfPresent(uuid, (key, homes) -> {
+                if (homes.contains(storedName)) return homes;
+                List<String> updated = new ArrayList<>(homes);
+                updated.add(storedName);
+                Collections.sort(updated);
+                return List.copyOf(updated);
+            });
             return true;
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Could not save home '" + homeName + "' for " + uuid + ": " + e.getMessage(), e);
@@ -228,7 +345,7 @@ public class DatabaseManager {
         }
     }
 
-    public Location getHome(UUID uuid, String homeName) {
+    private Location fetchHome(UUID uuid, String homeName) {
         if (connection == null) return null;
         String sql = "SELECT world, x, y, z, yaw, pitch FROM player_homes WHERE uuid = ? AND home_name = ?";
 
@@ -257,7 +374,7 @@ public class DatabaseManager {
         return null;
     }
 
-    public List<String> getHomes(UUID uuid) {
+    private List<String> fetchHomes(UUID uuid) {
         if (connection == null) return new ArrayList<>();
         List<String> homeNames = new ArrayList<>();
         String sql = "SELECT home_name FROM player_homes WHERE uuid = ? ORDER BY home_name";
@@ -274,13 +391,18 @@ public class DatabaseManager {
         return homeNames;
     }
 
-    public boolean deleteHome(UUID uuid, String homeName) {
+    private boolean removeHome(UUID uuid, String homeName) {
         if (connection == null) return false;
         String sql = "DELETE FROM player_homes WHERE uuid = ? AND home_name = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, uuid.toString());
             pstmt.setString(2, homeName.toLowerCase());
             int affectedRows = pstmt.executeUpdate();
+            if (affectedRows > 0) {
+                homeNameCache.computeIfPresent(uuid, (key, homes) -> homes.stream()
+                        .filter(name -> !name.equalsIgnoreCase(homeName))
+                        .toList());
+            }
             return affectedRows > 0;
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Could not delete home '" + homeName + "' for " + uuid + ": " + e.getMessage(), e);

@@ -33,29 +33,28 @@ public class HomesCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        List<String> homeNames = databaseManager.getHomes(player.getUniqueId());
-        int homeLimit = databaseManager.getHomeLimit(player.getUniqueId());
-
-        if (homeNames.isEmpty()) {
-            player.sendMessage(Component.text("You have no homes set. Use /sethome [name]").color(NamedTextColor.YELLOW));
-            return true;
-        }
-
-        TextComponent homesText = Component.text("Your homes (" + homeNames.size() + "/" + homeLimit + "): ").color(NamedTextColor.GOLD);
-        int size = homeNames.size();
-        for (int i = 0; i < size; i++) {
-            String name = homeNames.get(i);
-            TextComponent homeNameComponent = Component.text(name)
-                    .clickEvent(ClickEvent.suggestCommand("/home " + name))
-                    .hoverEvent(HoverEvent.showText(Component.text("Click to use command.")))
-                    .decoration(TextDecoration.UNDERLINED, true)
-                    .color(NamedTextColor.WHITE);
-            homesText = homesText.append(homeNameComponent);
-            if (i < size - 1) {
-                homesText = homesText.append(Component.text(", ").color(NamedTextColor.WHITE));
+        databaseManager.getHomesAsync(player.getUniqueId())
+                .thenCombine(databaseManager.getHomeLimitAsync(player.getUniqueId()), (homeNames, homeLimit) -> {
+            if (homeNames.isEmpty()) {
+                return Component.text("You have no homes set. Use /sethome [name]").color(NamedTextColor.YELLOW);
             }
-        }
-        player.sendMessage(homesText);
+
+            TextComponent homesText = Component.text("Your homes (" + homeNames.size() + "/" + homeLimit + "): ").color(NamedTextColor.GOLD);
+            int size = homeNames.size();
+            for (int i = 0; i < size; i++) {
+                String name = homeNames.get(i);
+                TextComponent homeNameComponent = Component.text(name)
+                        .clickEvent(ClickEvent.suggestCommand("/home " + name))
+                        .hoverEvent(HoverEvent.showText(Component.text("Click to use command.")))
+                        .decoration(TextDecoration.UNDERLINED, true)
+                        .color(NamedTextColor.WHITE);
+                homesText = homesText.append(homeNameComponent);
+                if (i < size - 1) {
+                    homesText = homesText.append(Component.text(", ").color(NamedTextColor.WHITE));
+                }
+            }
+            return homesText;
+        }).thenAccept(player::sendMessage);
         return true;
     }
 

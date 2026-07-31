@@ -2,7 +2,9 @@ package com.jellypudding.simpleHome;
 
 import com.jellypudding.simpleHome.commands.*;
 import com.jellypudding.simpleHome.database.DatabaseManager;
+import com.jellypudding.simpleHome.listeners.PlayerConnectionListener;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Objects;
@@ -23,6 +25,11 @@ public final class SimpleHome extends JavaPlugin {
         databaseManager = new DatabaseManager(this, maxHomeLimit);
 
         registerCommands();
+        getServer().getPluginManager().registerEvents(new PlayerConnectionListener(databaseManager), this);
+
+        for (Player player : getServer().getOnlinePlayers()) {
+            databaseManager.cachePlayer(player.getUniqueId());
+        }
 
         int pluginId = 27541;
         new Metrics(this, pluginId);
@@ -51,11 +58,11 @@ public final class SimpleHome extends JavaPlugin {
     }
 
     private void registerCommands() {
-        SetHomeCommand setHomeCmd = new SetHomeCommand(databaseManager, DEFAULT_HOME_NAME);
-        HomeCommand homeCmd = new HomeCommand(databaseManager, DEFAULT_HOME_NAME, allowCrossDimensionTeleport);
+        SetHomeCommand setHomeCmd = new SetHomeCommand(this, databaseManager, DEFAULT_HOME_NAME);
+        HomeCommand homeCmd = new HomeCommand(this, databaseManager, DEFAULT_HOME_NAME, allowCrossDimensionTeleport);
         DelHomeCommand delHomeCmd = new DelHomeCommand(databaseManager);
         HomesCommand homesCmd = new HomesCommand(databaseManager);
-        HomeAdminCommand homeAdminCmd = new HomeAdminCommand(databaseManager, maxHomeLimit, getServer());
+        HomeAdminCommand homeAdminCmd = new HomeAdminCommand(this, databaseManager, maxHomeLimit, getServer());
 
         Objects.requireNonNull(getCommand("sethome")).setExecutor(setHomeCmd);
         Objects.requireNonNull(getCommand("sethome")).setTabCompleter(setHomeCmd);

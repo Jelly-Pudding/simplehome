@@ -11,14 +11,16 @@
 * Teleport to your saved homes.
 * Delete specific homes.
 * List your currently set homes.
-* Stores home locations efficiently in an SQLite database.
+* Stores home locations efficiently in an SQLite database with all database access off the main thread.
+* Confirmation prompt before overwriting an existing home.
+* Tab completion of your home names.
 * Players start with a limit of 1 home.
 * Cross-dimension teleportation control.
 
 ## Commands
 
 ### Player Commands
-* `/sethome [name]` - Sets a home at your current location. Uses the name "home" if no name is provided.
+* `/sethome [name]` - Sets a home at your current location. Uses the name "home" if no name is provided. If the home already exists, you must confirm within 30 seconds to overwrite it.
 * `/home [name]` - Teleports you to the specified home. Uses the name "home" if no name is provided.
 * `/delhome <name>` - Deletes the home with the specified name.
 * `/homes` - Lists all the homes you have currently set (clickable to use).
@@ -43,7 +45,7 @@
 1. Download the latest `SimpleHome.jar` and place it in a `libs` directory - and then add this to your `build.gradle` file:
     ```gradle
     dependencies {
-        compileOnly files('libs/SimpleHome-1.0.7.jar')
+        compileOnly files('libs/SimpleHome-1.1.0.jar')
     }
     ```
 

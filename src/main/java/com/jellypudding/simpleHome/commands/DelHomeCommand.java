@@ -36,11 +36,13 @@ public class DelHomeCommand implements CommandExecutor, TabCompleter {
         }
 
         String homeName = args[0];
-        if (databaseManager.deleteHome(player.getUniqueId(), homeName)) {
-            player.sendMessage(Component.text("Home '" + homeName + "' deleted.").color(NamedTextColor.GREEN));
-        } else {
-            player.sendMessage(Component.text("Home '" + homeName + "' not found.").color(NamedTextColor.RED));
-        }
+        databaseManager.deleteHomeAsync(player.getUniqueId(), homeName).thenAccept(deleted -> {
+            if (deleted) {
+                player.sendMessage(Component.text("Home '" + homeName + "' deleted.").color(NamedTextColor.GREEN));
+            } else {
+                player.sendMessage(Component.text("Home '" + homeName + "' not found.").color(NamedTextColor.RED));
+            }
+        });
         return true;
     }
 
@@ -51,7 +53,7 @@ public class DelHomeCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 1) {
             String currentArg = args[0].toLowerCase();
-            return databaseManager.getHomes(player.getUniqueId()).stream()
+            return databaseManager.getCachedHomes(player.getUniqueId()).stream()
                     .filter(name -> name.toLowerCase().startsWith(currentArg))
                     .collect(Collectors.toList());
         }
